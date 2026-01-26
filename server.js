@@ -2,26 +2,20 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const stripe = require('stripe')('your_stripe_key'); // Replace with your Stripe secret key
+const paystack = require('paystack')('your_paystack_secret_key'); // Add "paystack": "^2.0.1" to package.json dependencies
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-// Stripe Subscription Endpoint
 app.post('/create-subscription', async (req, res) => {
   try {
-    const customer = await stripe.customers.create({ email: req.body.email });
-    const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
-      items: [{ price: 'your_premium_price_id' }], // Create in Stripe dashboard
+    const plan = await paystack.plan.create({
+      name: 'Premium Plan',
+      interval: 'monthly',
+      amount: 499 * 100, // ₦499 in kobo
     });
-    res.json({ subscriptionId: subscription.id });
+    const subscription = await paystack.subscription.create({
+      customer: req.body.customerId, // From frontend user signup
+      plan: plan.code
+    });
+    res.json(subscription);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
